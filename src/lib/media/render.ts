@@ -200,9 +200,17 @@ export async function renderVideo(
   const narSize = Math.round(W * 0.05);
   const safeW = W * 0.84;
 
+  const XF = 0.45; // thời lượng crossfade giữa các cảnh (giây)
+  const multi = scenes.length > 1;
+  const clipDurs: number[] = [];
+
   for (let i = 0; i < scenes.length; i++) {
     const sc = scenes[i];
     const dur = Math.max(1.2, sc.end_time - sc.start_time);
+    // Kéo dài mỗi cảnh thêm XF để phần chồng crossfade không "ăn" nội dung,
+    // giữ tổng thời lượng ≈ voice (đồng bộ lời + phụ đề).
+    const clipDur = dur + (multi ? XF : 0);
+    clipDurs.push(clipDur);
     const clip = path.join(tmpDir, `scene_${i}.mp4`);
 
     const narFile = path.join(tmpDir, `nar_${i}.txt`);
@@ -213,31 +221,57 @@ export async function renderVideo(
     const bg = bgMap?.get(sc.id);
     if (bg) {
       try {
-        await renderFootage(bg, dur, clip, font, opts, narFile, narSize, lines);
+        await renderFootage(bg, clipDur, clip, font, opts, narFile, narSize, lines);
         footageScenes++;
       } catch {
-        // Footage lỗi (file hỏng, codec lạ…) → fallback thẻ chữ, không làm hỏng cả video.
-        await renderCard(dur, clip, font, opts, narFile, narSize, lines);
+        await renderCard(clipDur, clip, font, opts, narFile, narSize, lines);
         cardScenes++;
       }
     } else {
-      await renderCard(dur, clip, font, opts, narFile, narSize, lines);
+      await renderCard(clipDur, clip, font, opts, narFile, narSize, lines);
       cardScenes++;
     }
     clips.push(clip);
   }
 
-  // Nối cảnh
-  const listFile = path.join(tmpDir, "concat.txt");
-  await fs.writeFile(listFile, clips.map((c) => `file '${c}'`).join("\n"), "utf8");
-  const silentConcat = path.join(tmpDir, "concat.mp4");
-  await runFfmpeg(["-y", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", silentConcat]);
+  // Nối cảnh: crossfade mượt (xfade) khi có nhiều cảnh.
+  const silent = path.join(tmpDir, "silent.mp4");
+  if (clips.length === 1) {
+    await fs.copyFile(clips[0], silent);
+  } else {
+    const inputs = clips.flatMap((c) => ["-i", c]);
+    let filter = "";
+    let prev = "[0:v]";
+    let acc = clipDurs[0];
+    for (let i = 1; i < clips.length; i++) {
+      const off = Math.max(0, Math.round((acc - XF) * 1000) / 1000);
+      const out = i === clips.length - 1 ? "[vout]" : `[vx${i}]`;
+      filter += `${prev}[${i}:v]xfade=transition=fade:duration=${XF}:offset=${off}${out};`;
+      prev = out;
+      acc = acc + clipDurs[i] - XF;
+    }
+    filter = filter.replace(/;$/, "");
+    try {
+      await runFfmpeg([
+        "-y", ...inputs,
+        "-filter_complex", filter,
+        "-map", "[vout]",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", opts.preset, "-crf", String(opts.crf),
+        silent,
+      ]);
+    } catch {
+      // Fallback: nếu xfade lỗi → nối cứng để không hỏng cả video.
+      const listFile = path.join(tmpDir, "concat.txt");
+      await fs.writeFile(listFile, clips.map((c) => `file '${c}'`).join("\n"), "utf8");
+      await runFfmpeg(["-y", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", silent]);
+    }
+  }
 
-  // Ghép voice
+  // Ghép voice (-shortest cắt phần XF dư ở đuôi video, giữ trọn lời).
   if (voicePath) {
     await runFfmpeg([
       "-y",
-      "-i", silentConcat,
+      "-i", silent,
       "-i", voicePath,
       "-map", "0:v:0", "-map", "1:a:0",
       "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
@@ -245,7 +279,7 @@ export async function renderVideo(
       outPath,
     ]);
   } else {
-    await fs.copyFile(silentConcat, outPath);
+    await fs.copyFile(silent, outPath);
   }
 
   await Promise.all(clips.map((c) => fs.rm(c, { force: true })));

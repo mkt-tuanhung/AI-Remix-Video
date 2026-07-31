@@ -61,53 +61,72 @@ export async function splitStoryScenes(
 
   if (hasOpenAI() && script.trim()) {
     try {
-      const out = await chatJSON<{ scenes: any[] }>(
-        `You are a film storyboard artist. Split the narration into ${wantScenes} sequential scenes.
-For each scene provide: narration (1 sentence in ${langName(lang)}), on_screen_text (a few words, optional),
-and image_prompt: a rich ENGLISH prompt describing the visual for this exact moment
-(characters, setting, action, mood, composition). Keep characters/world consistent across scenes.
-Do NOT include the style words; they will be appended automatically.
-Return JSON: {"scenes":[{"narration","on_screen_text","image_prompt"}]}`,
+      // Tạo "hồ sơ nhân vật + bối cảnh" cố định, rồi từng cảnh chỉ mô tả HÀNH ĐỘNG.
+      const out = await chatJSON<{ characters: string; setting: string; scenes: any[] }>(
+        `You are a film storyboard artist. First define a FIXED visual "character sheet":
+"characters" = one detailed English description of the main character(s): species/type, exact colors,
+clothing, distinctive features — this MUST stay identical in every scene for consistency.
+"setting" = the consistent world, art direction and color palette.
+Then split the narration into ${wantScenes} sequential scenes that tell ONE continuous, coherent story
+(clear cause-and-effect, same characters throughout).
+For each scene: narration (1 sentence in ${langName(lang)}), on_screen_text (a few words, optional),
+and "action" = ENGLISH description of what happens visually in THIS scene (pose, camera, mood) —
+do NOT re-describe the character's fixed look, that is handled by the character sheet.
+Return JSON: {"characters":"...","setting":"...","scenes":[{"narration","on_screen_text","action"}]}`,
         `Title: ${title}\nVisual genre: ${genre}\nNarration:\n${script}`,
-        { temperature: 0.7 }
+        { temperature: 0.6 }
       );
       const raw = (out.scenes || []).slice(0, 10);
-      if (raw.length) return { provider: "openai", scenes: build(raw, variantId, style, targetSeconds) };
+      if (raw.length) {
+        return {
+          provider: "openai",
+          scenes: build(raw, variantId, style, targetSeconds, out.characters || "", out.setting || ""),
+        };
+      }
     } catch {
       /* fallback */
     }
   }
 
-  // Mock: chia câu, prompt ảnh đơn giản.
+  // Mock: chia câu.
   const sentences = script.split(/(?<=[.!?…])\s+/).map((s) => s.trim()).filter(Boolean).slice(0, 10);
   const raw = (sentences.length ? sentences : [script]).map((s) => ({
     narration: s,
     on_screen_text: "",
-    image_prompt: s,
+    action: s,
   }));
-  return { provider: "mock", scenes: build(raw, variantId, style, targetSeconds) };
+  return { provider: "mock", scenes: build(raw, variantId, style, targetSeconds, "", "") };
 }
 
 function build(
-  raw: { narration: string; on_screen_text?: string; image_prompt?: string }[],
+  raw: { narration: string; on_screen_text?: string; action?: string; image_prompt?: string }[],
   variantId: string,
   style: string,
-  targetSeconds: number
+  targetSeconds: number,
+  characters: string,
+  setting: string
 ): Scene[] {
   const total = raw.reduce((s, r) => s + estimateSpeechSeconds(r.narration), 0) || 1;
+  const charBible = characters ? `Main character (keep IDENTICAL every frame): ${characters}. ` : "";
+  const world = setting ? `Setting/art direction (consistent): ${setting}. ` : "";
   let t = 0;
   return raw.map((r, i) => {
     const dur = Math.max(2, (estimateSpeechSeconds(r.narration) / total) * targetSeconds);
     const start = Math.round(t * 100) / 100;
     t += dur;
+    const action = r.action || r.image_prompt || r.narration;
     return {
       id: uid("scene"),
       variant_id: variantId,
       order: i,
       narration: r.narration,
       purpose: i === 0 ? "Mở đầu" : i === raw.length - 1 ? "Kết thúc" : "Diễn biến",
-      visual_intent: r.image_prompt || r.narration,
-      image_prompt: `${r.image_prompt || r.narration}. ${style}. vertical 9:16 composition, no text, no watermark`,
+      visual_intent: action,
+      // Nhồi hồ sơ nhân vật + bối cảnh cố định vào MỌI khung → nhân vật đồng nhất.
+      image_prompt:
+        `${charBible}${world}This scene: ${action}. ${style}. ` +
+        `Keep the exact same character design, colors and art style as the other frames of this film. ` +
+        `Vertical 9:16 cinematic composition, no text, no watermark, no letterboxing`,
       asset_type: "image",
       asset_id: null,
       search_queries: [],

@@ -389,6 +389,7 @@ export interface CreateStoryInput {
   aspect_ratio?: AspectRatio;
   platform?: Platform;
   music_mode?: "none" | "ai_bed";
+  motion_engine?: "kenburns" | "fal";
 }
 
 export async function createStoryProject(input: CreateStoryInput): Promise<Project> {
@@ -400,6 +401,7 @@ export async function createStoryProject(input: CreateStoryInput): Promise<Proje
     kind: "story",
     story_text: input.story_text.trim(),
     genre: input.genre ?? "2d",
+    motion_engine: input.motion_engine ?? "kenburns",
     source_video_id: null,
     goal: "story",
     language: input.output_language ?? "en",

@@ -76,7 +76,8 @@ export type JobStep =
   // Module 2: Truyện → Phim
   | "STORY_SCRIPT"
   | "STORY_STORYBOARD"
-  | "IMAGE_GENERATION";
+  | "IMAGE_GENERATION"
+  | "VIDEO_ANIMATION";
 
 export type JobStatus =
   | "pending"
@@ -141,6 +142,7 @@ export interface Project {
   kind?: ProjectKind; // "remix" (mặc định) | "story"
   story_text?: string; // nội dung/truyện đầu vào cho kind=story
   genre?: StoryGenre; // thể loại hình ảnh cho kind=story
+  motion_engine?: "kenburns" | "fal"; // ảnh động nhẹ vs nhân vật chuyển động AI
   source_video_id: string | null;
   goal: ContentGoal;
   language: string;

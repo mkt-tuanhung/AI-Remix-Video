@@ -28,6 +28,12 @@ export const config = {
     pixabayKey: process.env.PIXABAY_API_KEY || "",
   },
 
+  // Sinh video chuyển động (image-to-video). fal.ai + LTX (rẻ).
+  fal: {
+    key: process.env.FAL_KEY || "",
+    videoModel: process.env.FAL_VIDEO_MODEL || "fal-ai/ltx-video-13b-distilled/image-to-video",
+  },
+
   ffmpeg: {
     ffmpeg: process.env.FFMPEG_PATH || resolveFfmpegStatic() || "ffmpeg",
     ffprobe: process.env.FFPROBE_PATH || resolveFfprobeStatic() || "ffprobe",
@@ -72,6 +78,8 @@ export function capabilities() {
     llm: hasOpenAI ? "openai" : "mock",
     tts: hasTts ? config.tts.provider : "mock",
     stock: hasStock ? config.stock.provider : "mock",
+    image: hasOpenAI ? "gpt-image-1" : "mock",
+    motion: config.fal.key ? "fal-ltx" : "kenburns",
     store: config.store,
   } as const;
 }

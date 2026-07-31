@@ -20,7 +20,8 @@ const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 const STEP_LABEL: Record<string, string> = {
   STORY_SCRIPT: "Viết kịch bản",
   STORY_STORYBOARD: "Chia khung hình",
-  IMAGE_GENERATION: "Sinh ảnh AI",
+  IMAGE_GENERATION: "Sinh ảnh AI (khung gốc)",
+  VIDEO_ANIMATION: "Làm nhân vật chuyển động",
   VOICE_GENERATION: "Tạo voice AI",
   MUSIC_MIX: "Phối nhạc + ducking",
   CAPTION_GENERATION: "Tạo phụ đề",

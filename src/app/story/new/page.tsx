@@ -22,6 +22,7 @@ export default function StoryNew() {
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [duration, setDuration] = useState(45);
   const [music, setMusic] = useState<"ai_bed" | "none">("ai_bed");
+  const [motion, setMotion] = useState<"kenburns" | "fal">("kenburns");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -41,6 +42,7 @@ export default function StoryNew() {
           target_duration_seconds: duration,
           aspect_ratio: "9:16",
           music_mode: music,
+          motion_engine: motion,
         }),
       });
       const data = await res.json();
@@ -81,6 +83,21 @@ export default function StoryNew() {
               {GENRES.map((g) => (
                 <div key={g.v} className={`chip ${genre === g.v ? "selected" : ""}`} onClick={() => setGenre(g.v)}>{g.l}</div>
               ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <label className="label">Chuyển động</label>
+            <div className="chip-row">
+              <div className={`chip ${motion === "fal" ? "selected" : ""}`} onClick={() => setMotion("fal")}>
+                🎥 Nhân vật chuyển động AI (fal LTX)
+              </div>
+              <div className={`chip ${motion === "kenburns" ? "selected" : ""}`} onClick={() => setMotion("kenburns")}>
+                🖼️ Ảnh động nhẹ (Ken Burns) · miễn phí
+              </div>
+            </div>
+            <div className="hint">
+              "Chuyển động AI" làm nhân vật cử động thật (cần <code>FAL_KEY</code>, ~$0.05/khung). Thiếu key sẽ tự về ảnh động nhẹ.
             </div>
           </div>
 

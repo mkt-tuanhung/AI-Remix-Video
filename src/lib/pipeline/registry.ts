@@ -16,6 +16,7 @@ import { finalRender } from "./steps/final-render";
 import { storyScript } from "./steps/story-script";
 import { storyStoryboard } from "./steps/story-storyboard";
 import { imageGeneration } from "./steps/image-generation";
+import { videoAnimation } from "./steps/video-animation";
 
 // Registry bước -> handler.
 // GĐ1: 4 bước phân tích. GĐ2: chiến lược/hook/kịch bản → storyboard → tài nguyên.
@@ -37,6 +38,7 @@ export const HANDLERS: Partial<Record<JobStep, StepHandler>> = {
   STORY_SCRIPT: storyScript,
   STORY_STORYBOARD: storyStoryboard,
   IMAGE_GENERATION: imageGeneration,
+  VIDEO_ANIMATION: videoAnimation,
 };
 
 /** Chuỗi job của giai đoạn phân tích (chạy tuần tự theo depends_on). */
@@ -70,6 +72,7 @@ export const STORY_PIPELINE: JobStep[] = [
   "STORY_SCRIPT",
   "STORY_STORYBOARD",
   "IMAGE_GENERATION",
+  "VIDEO_ANIMATION",
   "VOICE_GENERATION",
   "MUSIC_MIX",
   "CAPTION_GENERATION",

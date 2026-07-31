@@ -17,6 +17,7 @@ export async function POST(req: Request) {
       aspect_ratio: body.aspect_ratio,
       platform: body.platform,
       music_mode: body.music_mode,
+      motion_engine: body.motion_engine,
     });
     return NextResponse.json({ project }, { status: 201 });
   } catch (e: any) {
