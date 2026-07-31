@@ -35,6 +35,21 @@ export const config = {
     musicModel: process.env.FAL_MUSIC_MODEL || "fal-ai/stable-audio",
   },
 
+  // Freepik AI API — gom nhiều model video (Kling, Veo, MiniMax, PixVerse, LTX...).
+  freepik: {
+    key: process.env.FREEPIK_API_KEY || "",
+    // slug model image-to-video của Freepik (đổi tuỳ gói/credit): vd kling-v2-1-master,
+    // minimax-hailuo-02-768p, pixverse-v5, ltx-video-v097, seedance-pro-1080p...
+    videoModel: process.env.FREEPIK_VIDEO_MODEL || "kling-v2-1-master",
+  },
+
+  // Chọn nhà cung cấp video tự động: ưu tiên freepik nếu có key, else fal.
+  get videoProvider(): "freepik" | "fal" | "none" {
+    if (process.env.FREEPIK_API_KEY) return "freepik";
+    if (process.env.FAL_KEY) return "fal";
+    return "none";
+  },
+
   ffmpeg: {
     ffmpeg: process.env.FFMPEG_PATH || resolveFfmpegStatic() || "ffmpeg",
     ffprobe: process.env.FFPROBE_PATH || resolveFfprobeStatic() || "ffprobe",
@@ -80,7 +95,7 @@ export function capabilities() {
     tts: hasTts ? config.tts.provider : "mock",
     stock: hasStock ? config.stock.provider : "mock",
     image: hasOpenAI ? "gpt-image-1" : "mock",
-    motion: config.fal.key ? "fal-ltx" : "kenburns",
+    motion: config.freepik.key ? "freepik" : config.fal.key ? "fal-ltx" : "kenburns",
     store: config.store,
   } as const;
 }
