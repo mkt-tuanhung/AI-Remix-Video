@@ -34,11 +34,21 @@ async function findFont(): Promise<string | null> {
   return null;
 }
 
-function wrap(text: string, maxChars: number): string {
-  const words = text.split(/\s+/);
+// Xuống dòng theo ĐỘ RỘNG PIXEL (không theo số ký tự) để chữ không tràn khung.
+// Ước lượng bề rộng glyph ~ 0.52*fontsize cho font sans (Arial), tính cả dấu tiếng Việt.
+function wrapPx(text: string, fontSize: number, maxWidthPx: number): string {
+  const avg = fontSize * 0.52;
+  const maxChars = Math.max(6, Math.floor(maxWidthPx / avg));
+  const words = text.replace(/\s+/g, " ").trim().split(" ");
   const lines: string[] = [];
   let cur = "";
   for (const w of words) {
+    // từ quá dài cũng cắt cứng
+    if (w.length > maxChars) {
+      if (cur) { lines.push(cur); cur = ""; }
+      for (let i = 0; i < w.length; i += maxChars) lines.push(w.slice(i, i + maxChars));
+      continue;
+    }
     if ((cur + " " + w).trim().length > maxChars) {
       if (cur) lines.push(cur.trim());
       cur = w;
@@ -61,53 +71,48 @@ export interface RenderOpts {
 export const PREVIEW_OPTS: RenderOpts = { width: 720, height: 1280, fps: 24, crf: 30, preset: "veryfast" };
 export const FINAL_OPTS: RenderOpts = { width: 1080, height: 1920, fps: 30, crf: 20, preset: "medium" };
 
-/** Chuỗi drawtext phủ lên nền (giống nhau cho footage & thẻ chữ). */
-function overlays(
-  font: string,
-  W: number,
-  H: number,
-  order: number,
-  kwFile: string,
-  narFile: string,
-  hasKw: boolean,
-  onFootage: boolean
-): string {
+// Phụ đề kiểu TikTok/CapCut: chữ đậm, VIỀN + đổ bóng (không dùng box thô),
+// canh giữa, neo ở 1/3 dưới, nằm trong vùng an toàn.
+function subtitle(font: string, W: number, H: number, narFile: string, narSize: number, lines: number, centered: boolean): string {
   const fontEsc = font.replace(/'/g, "\\'");
-  const kwSize = Math.round(W * 0.075);
-  const narSize = Math.round(W * 0.052);
-  const box = onFootage ? `:box=1:boxcolor=0x0b1f1c@0.45:boxborderw=${Math.round(W * 0.02)}` : "";
+  const ls = Math.round(narSize * 0.24);
+  const lineH = narSize + ls;
+  const blockH = lines * lineH;
+  const bw = Math.max(2, Math.round(narSize * 0.085));
+  const sh = Math.max(1, Math.round(narSize * 0.045));
+  // Card: canh giữa dọc. Footage: neo vùng dưới (trên UI nền tảng).
+  const y = centered
+    ? Math.round((H - blockH) / 2)
+    : Math.max(Math.round(H * 0.46), Math.round(H * 0.8 - blockH));
+  return (
+    `drawtext=fontfile='${fontEsc}':textfile='${narFile}':fontcolor=white:fontsize=${narSize}` +
+    `:x=(w-text_w)/2:y=${y}:line_spacing=${ls}` +
+    `:borderw=${bw}:bordercolor=0x081210@0.92:shadowcolor=black@0.5:shadowx=${sh}:shadowy=${sh}`
+  );
+}
 
-  return [
-    `drawbox=x=0:y=0:w=${W}:h=${Math.round(H * 0.007)}:color=0x2dd4bf:t=fill`,
-    `drawtext=fontfile='${fontEsc}':text='${order + 1}':fontcolor=0x2dd4bf:fontsize=${Math.round(
-      W * 0.05
-    )}:x=${Math.round(W * 0.06)}:y=${Math.round(H * 0.05)}`,
-    hasKw
-      ? `drawtext=fontfile='${fontEsc}':textfile='${kwFile}':fontcolor=0x5eead4:fontsize=${kwSize}:x=(w-text_w)/2:y=h*0.20:line_spacing=12${box}`
-      : null,
-    `drawtext=fontfile='${fontEsc}':textfile='${narFile}':fontcolor=white:fontsize=${narSize}:x=(w-text_w)/2:y=h*0.66:line_spacing=16:box=1:boxcolor=0x0b1f1c@0.55:boxborderw=${Math.round(
-      W * 0.03
-    )}`,
-    `drawtext=fontfile='${fontEsc}':text='AI Remix':fontcolor=0x94a3a0:fontsize=${Math.round(
-      W * 0.035
-    )}:x=(w-text_w)/2:y=h*0.93`,
-  ]
-    .filter(Boolean)
-    .join(",");
+function brand(font: string, W: number, H: number): string {
+  const fontEsc = font.replace(/'/g, "\\'");
+  return `drawtext=fontfile='${fontEsc}':text='AI Remix':fontcolor=white@0.55:fontsize=${Math.round(
+    W * 0.03
+  )}:x=(w-text_w)/2:y=${Math.round(H * 0.955)}:shadowcolor=black@0.4:shadowx=1:shadowy=1`;
 }
 
 async function renderCard(
-  scene: Scene,
   dur: number,
   clip: string,
   font: string,
   opts: RenderOpts,
-  kwFile: string,
   narFile: string,
-  hasKw: boolean
+  narSize: number,
+  lines: number
 ): Promise<void> {
   const { width: W, height: H, fps } = opts;
-  const vf = overlays(font, W, H, scene.order, kwFile, narFile, hasKw, false);
+  // Nền teal đậm, chấm accent mint ở trên cho có điểm nhấn nhẹ.
+  const accent = `drawbox=x=${Math.round(W * 0.44)}:y=${Math.round(H * 0.30)}:w=${Math.round(W * 0.12)}:h=${Math.round(
+    H * 0.006
+  )}:color=0x2dd4bf:t=fill`;
+  const vf = [accent, subtitle(font, W, H, narFile, narSize, lines, true), brand(font, W, H)].join(",");
   await runFfmpeg([
     "-y",
     "-f", "lavfi",
@@ -120,27 +125,27 @@ async function renderCard(
 }
 
 async function renderFootage(
-  scene: Scene,
   bg: SceneBg,
   dur: number,
   clip: string,
   font: string,
   opts: RenderOpts,
-  kwFile: string,
   narFile: string,
-  hasKw: boolean
+  narSize: number,
+  lines: number
 ): Promise<void> {
   const { width: W, height: H, fps } = opts;
   const cover = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`;
-  const darken = `drawbox=x=0:y=0:w=iw:h=ih:color=0x0b1f1c@0.32:t=fill`;
-  const ov = overlays(font, W, H, scene.order, kwFile, narFile, hasKw, true);
+  // Scrim gradient GIẢ ở đáy (2 lớp) — giữ footage tươi, chỉ tối vùng có chữ.
+  const scrim =
+    `drawbox=x=0:y=${Math.round(H * 0.5)}:w=${W}:h=${Math.round(H * 0.5)}:color=black@0.26:t=fill,` +
+    `drawbox=x=0:y=${Math.round(H * 0.72)}:w=${W}:h=${Math.round(H * 0.28)}:color=black@0.4:t=fill`;
+  const ov = `${scrim},${subtitle(font, W, H, narFile, narSize, lines, false)},${brand(font, W, H)}`;
 
   if (bg.kind === "image") {
     const frames = Math.max(1, Math.round(dur * fps));
-    // Ken Burns nhẹ: zoom dần.
     const kb = `zoompan=z='min(zoom+0.0009,1.14)':d=${frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${fps}`;
-    const vf = `${cover},${kb},${darken},${ov}`;
-    // Lưu ý: KHÔNG dùng -loop 1 ở đây — zoompan tự sinh đủ số frame; -loop gây lỗi decode.
+    const vf = `${cover},${kb},${ov}`;
     await runFfmpeg([
       "-y",
       "-i", bg.path,
@@ -150,7 +155,7 @@ async function renderFootage(
       clip,
     ]);
   } else {
-    const vf = `${cover},fps=${fps},${darken},${ov}`;
+    const vf = `${cover},fps=${fps},${ov}`;
     await runFfmpeg([
       "-y",
       "-stream_loop", "-1", "-i", bg.path,
@@ -185,31 +190,32 @@ export async function renderVideo(
   let footageScenes = 0;
   let cardScenes = 0;
 
+  // Cỡ chữ phụ đề + vùng an toàn (84% bề rộng) → wrap theo pixel để không tràn.
+  const narSize = Math.round(W * 0.05);
+  const safeW = W * 0.84;
+
   for (let i = 0; i < scenes.length; i++) {
     const sc = scenes[i];
     const dur = Math.max(1.2, sc.end_time - sc.start_time);
     const clip = path.join(tmpDir, `scene_${i}.mp4`);
 
-    const kwFile = path.join(tmpDir, `kw_${i}.txt`);
     const narFile = path.join(tmpDir, `nar_${i}.txt`);
-    // Từ khoá: cắt ngắn + xuống dòng để không tràn mép (GPT đôi khi trả cả cụm dài).
-    const kwRaw = (sc.on_screen_text || "").trim();
-    const kw = kwRaw ? wrap(kwRaw.toUpperCase(), 16) : "";
-    await fs.writeFile(kwFile, kw, "utf8");
-    await fs.writeFile(narFile, wrap(sc.narration, Math.round(W / 26)), "utf8");
+    const wrapped = wrapPx(sc.narration, narSize, safeW);
+    const lines = wrapped.split("\n").length;
+    await fs.writeFile(narFile, wrapped, "utf8");
 
     const bg = bgMap?.get(sc.id);
     if (bg) {
       try {
-        await renderFootage(sc, bg, dur, clip, font, opts, kwFile, narFile, !!kw);
+        await renderFootage(bg, dur, clip, font, opts, narFile, narSize, lines);
         footageScenes++;
       } catch {
         // Footage lỗi (file hỏng, codec lạ…) → fallback thẻ chữ, không làm hỏng cả video.
-        await renderCard(sc, dur, clip, font, opts, kwFile, narFile, !!kw);
+        await renderCard(dur, clip, font, opts, narFile, narSize, lines);
         cardScenes++;
       }
     } else {
-      await renderCard(sc, dur, clip, font, opts, kwFile, narFile, !!kw);
+      await renderCard(dur, clip, font, opts, narFile, narSize, lines);
       cardScenes++;
     }
     clips.push(clip);
