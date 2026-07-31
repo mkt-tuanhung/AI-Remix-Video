@@ -23,8 +23,11 @@ services:
         value: pexels
       - key: NODE_ENV
         value: production
-      # Điền 2 key này trong Render Dashboard (không commit vào repo):
+      # Điền các key/secret này trong Render Dashboard (không commit vào repo):
       - key: OPENAI_API_KEY
         sync: false
       - key: PEXELS_API_KEY
+        sync: false
+      # Mật khẩu chung để chia sẻ link (đặt tuỳ ý; bỏ trống = không cần đăng nhập):
+      - key: APP_PASSWORD
         sync: false
