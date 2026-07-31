@@ -145,6 +145,7 @@ export interface Project {
   genre?: StoryGenre; // thể loại hình ảnh cho kind=story
   // kenburns=ảnh động nhẹ · fal=nhân vật chuyển động AI (tự động) · manual=tạo clip ở Veo/Flow rồi upload
   motion_engine?: "kenburns" | "fal" | "manual";
+  assemble_captions?: boolean; // ghép phim Veo: có burn phụ đề không (mặc định có)
   source_video_id: string | null;
   goal: ContentGoal;
   language: string;

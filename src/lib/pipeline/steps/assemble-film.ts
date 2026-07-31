@@ -35,10 +35,11 @@ export async function assembleFilm(ctx: StepContext): Promise<void> {
       (await generateAiBed(secs, path.join(dir, `bed_${variant.id}.m4a`)));
   }
 
-  await ctx.setProgress(0.5, `Ghép ${clips.length} clip + phụ đề + nhạc`);
+  const captions = project.assemble_captions !== false;
+  await ctx.setProgress(0.5, `Ghép ${clips.length} clip${captions ? " + phụ đề" : ""}${musicAbs ? " + nhạc" : ""}`);
   const out = path.join(dir, `final_${variant.id}.mp4`);
   await assemble(clips, out, path.join(dir, `tmp_assemble_${variant.id}`), {
-    captions: true,
+    captions,
     musicAbs,
   });
 

@@ -466,10 +466,18 @@ export async function uploadSceneClip(
   });
 }
 
-/** Ghép phim từ các clip đã upload (chế độ Veo/Flow). */
-export async function assembleStoryFilm(projectId: string): Promise<Job[]> {
+/** Ghép phim từ các clip đã upload (chế độ Veo/Flow). Clip đã có sẵn voice+SFX. */
+export async function assembleStoryFilm(
+  projectId: string,
+  opts: { captions?: boolean; music?: boolean } = {}
+): Promise<Job[]> {
   const project = await getProject(projectId);
   if (!project) throw new Error("Không tìm thấy dự án");
+  // Mặc định: có phụ đề, KHÔNG nhạc (giữ nguyên audio gốc của clip Flow).
+  await store().update<Project>("projects", projectId, {
+    assemble_captions: opts.captions !== false,
+    music_mode: opts.music ? "ai_bed" : "none",
+  });
   if (await hasActiveJobs(projectId)) {
     return (await store().list<Job>("jobs", { project_id: projectId } as Partial<Job>)).filter(
       (j) => j.status === "pending" || j.status === "running"

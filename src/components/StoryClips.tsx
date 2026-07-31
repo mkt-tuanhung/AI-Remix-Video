@@ -19,6 +19,8 @@ export function StoryClips({
   const [copied, setCopied] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [captions, setCaptions] = useState(true);
+  const [music, setMusic] = useState(false);
 
   const uploaded = scenes.filter((s) => s.clip_url).length;
   const producing = status === "RENDERING_FINAL";
@@ -49,7 +51,11 @@ export function StoryClips({
   async function assemble() {
     setBusy(true);
     try {
-      await fetch(`/api/projects/${projectId}/assemble`, { method: "POST" });
+      await fetch(`/api/projects/${projectId}/assemble`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ captions, music }),
+      });
       await onReload();
     } finally {
       setBusy(false);
@@ -144,7 +150,15 @@ export function StoryClips({
           <div className="row between" style={{ flexWrap: "wrap", gap: 12 }}>
             <div>
               <div style={{ fontWeight: 650, marginBottom: 4 }}>Ghép phim · {uploaded}/{scenes.length} clip</div>
-              <div className="muted" style={{ fontSize: 13 }}>App sẽ ghép các clip + phụ đề + 1 dải nhạc nền liên tục (âm thanh liền mạch).</div>
+              <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Giữ nguyên voice + tiếng động của clip Flow. App chỉ nối + (tuỳ chọn) phụ đề/nhạc.</div>
+              <div className="row" style={{ gap: 16 }}>
+                <label className="row" style={{ gap: 6, cursor: "pointer", fontSize: 13 }}>
+                  <input type="checkbox" checked={captions} onChange={(e) => setCaptions(e.target.checked)} style={{ accentColor: "var(--teal-600)" }} /> Phụ đề
+                </label>
+                <label className="row" style={{ gap: 6, cursor: "pointer", fontSize: 13 }}>
+                  <input type="checkbox" checked={music} onChange={(e) => setMusic(e.target.checked)} style={{ accentColor: "var(--teal-600)" }} /> Thêm nhạc nền
+                </label>
+              </div>
             </div>
             <button className="btn btn-primary" disabled={busy || producing || uploaded === 0} onClick={assemble}>
               {(busy || producing) ? <span className="spin" /> : null}
