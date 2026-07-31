@@ -21,11 +21,15 @@ FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Font cho drawtext (render chữ). Image slim không có font → phải cài.
-# DejaVu hỗ trợ tiếng Việt đầy đủ.
+# ffmpeg hệ thống (Debian) — CÓ filter drawtext (libfreetype), khác với binary
+# ffmpeg-static bản Linux (thiếu drawtext). + font DejaVu cho tiếng Việt.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends fonts-dejavu-core fontconfig \
+  && apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core fontconfig \
   && rm -rf /var/lib/apt/lists/*
+
+# Ép app dùng ffmpeg hệ thống (có drawtext) thay vì ffmpeg-static trên server.
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
+ENV FFPROBE_PATH=/usr/bin/ffprobe
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
