@@ -6,7 +6,7 @@ services:
     runtime: docker
     plan: starter # cần RAM để render ffmpeg; free tier dễ hết RAM
     region: singapore # gần VN; đổi nếu muốn
-    healthCheckPath: /
+    healthCheckPath: /login
     autoDeploy: true
     disk:
       name: storage
