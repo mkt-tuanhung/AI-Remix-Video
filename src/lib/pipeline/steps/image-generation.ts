@@ -48,10 +48,19 @@ export async function imageGeneration(ctx: StepContext): Promise<void> {
       local_path: `/uploads/${project.id}/assets/${assetId}.png`,
     };
     await store().insert<Asset>("assets", asset);
-    // Ảnh AI dùng như "image" khi render (Ken Burns) — đặt asset_type image.
-    await store().update<Scene>("scenes", scene.id, { asset_id: assetId, asset_type: "image" });
+    // Ảnh AI dùng như "image" khi render (Ken Burns) — đặt asset_type image + lưu image_url (keyframe).
+    await store().update<Scene>("scenes", scene.id, {
+      asset_id: assetId,
+      asset_type: "image",
+      image_url: asset.local_path ?? undefined,
+    });
   }
 
-  await store().update<Project>("projects", project.id, { status: "GENERATING_VOICE", updated_at: nowISO() });
+  // Manual: dừng ở đây để user tạo clip trên Veo/Flow rồi upload.
+  if (project.motion_engine === "manual") {
+    await store().update<Project>("projects", project.id, { status: "WAITING_FOR_MEDIA_APPROVAL", updated_at: nowISO() });
+  } else {
+    await store().update<Project>("projects", project.id, { status: "GENERATING_VOICE", updated_at: nowISO() });
+  }
   await ctx.setProgress(1, `Đã sinh ${scenes.length} ảnh (${provider})`);
 }

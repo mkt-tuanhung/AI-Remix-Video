@@ -77,7 +77,8 @@ export type JobStep =
   | "STORY_SCRIPT"
   | "STORY_STORYBOARD"
   | "IMAGE_GENERATION"
-  | "VIDEO_ANIMATION";
+  | "VIDEO_ANIMATION"
+  | "ASSEMBLE_FILM";
 
 export type JobStatus =
   | "pending"
@@ -142,7 +143,8 @@ export interface Project {
   kind?: ProjectKind; // "remix" (mặc định) | "story"
   story_text?: string; // nội dung/truyện đầu vào cho kind=story
   genre?: StoryGenre; // thể loại hình ảnh cho kind=story
-  motion_engine?: "kenburns" | "fal"; // ảnh động nhẹ vs nhân vật chuyển động AI
+  // kenburns=ảnh động nhẹ · fal=nhân vật chuyển động AI (tự động) · manual=tạo clip ở Veo/Flow rồi upload
+  motion_engine?: "kenburns" | "fal" | "manual";
   source_video_id: string | null;
   goal: ContentGoal;
   language: string;
@@ -246,9 +248,20 @@ export interface Hook {
 }
 
 // ── Content variant — đặc tả 16.3 ────────────────────────────
+export interface StoryCharacter {
+  name: string;
+  description: string; // mô tả tạo hình cố định
+}
+
+export interface DialogueLine {
+  speaker: string; // "Narrator" hoặc tên nhân vật
+  text: string;
+}
+
 export interface ContentVariant {
   id: string;
   project_id: string;
+  characters?: StoryCharacter[]; // dàn nhân vật (phim truyện)
   platform: Platform;
   target_duration_seconds: number;
   content_angle: string;
@@ -271,6 +284,10 @@ export interface Scene {
   purpose: string;
   visual_intent: string;
   image_prompt?: string; // prompt sinh ảnh AI (module Truyện → Phim)
+  veo_prompt?: string; // prompt sẵn để dán vào Veo/Flow (có thoại + SFX + chuyển động)
+  dialogue?: DialogueLine[]; // lời thoại của cảnh (nhiều nhân vật)
+  image_url?: string; // ảnh gốc (keyframe) — public url
+  clip_url?: string; // clip user tải lên (Veo/Flow) — public url
   asset_type: AssetType;
   asset_id: string | null;
   search_queries: string[];

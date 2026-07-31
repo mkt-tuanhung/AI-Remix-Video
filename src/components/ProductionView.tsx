@@ -35,11 +35,13 @@ export function ProductionView({
   status,
   planning,
   onReload,
+  story = false,
 }: {
   projectId: string;
   status: ProjectStatus;
   planning: PlanningBundle;
   onReload: () => Promise<unknown>;
+  story?: boolean; // module Truyện → Phim: ẩn Gate-3 duyệt-media + A/B
 }) {
   const { render, quality } = planning;
   const [busy, setBusy] = useState(false);
@@ -54,8 +56,8 @@ export function ProductionView({
     }
   }
 
-  // Gate 3: duyệt media → sản xuất.
-  const gate3 = status === "WAITING_FOR_MEDIA_APPROVAL";
+  // Gate 3: duyệt media → sản xuất. (Ẩn cho module truyện — có luồng riêng.)
+  const gate3 = !story && status === "WAITING_FOR_MEDIA_APPROVAL";
   const producing = PRODUCING.has(status);
   const previewReady = !!render?.preview_path;
   const finalReady = !!render?.final_path;
@@ -184,8 +186,8 @@ export function ProductionView({
         </div>
       )}
 
-      {/* Variant Manager + A/B — hiện khi bản gốc đã có video cuối */}
-      {finalReady && <VariantManager projectId={projectId} planning={planning} onReload={onReload} />}
+      {/* Variant Manager + A/B — hiện khi bản gốc đã có video cuối (không áp cho truyện) */}
+      {finalReady && !story && <VariantManager projectId={projectId} planning={planning} onReload={onReload} />}
     </div>
   );
 }

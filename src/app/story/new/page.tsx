@@ -22,7 +22,7 @@ export default function StoryNew() {
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [duration, setDuration] = useState(45);
   const [music, setMusic] = useState<"ai_bed" | "none">("ai_bed");
-  const [motion, setMotion] = useState<"kenburns" | "fal">("kenburns");
+  const [motion, setMotion] = useState<"kenburns" | "fal" | "manual">("manual");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -89,15 +89,18 @@ export default function StoryNew() {
           <div className="field">
             <label className="label">Chuyển động</label>
             <div className="chip-row">
+              <div className={`chip ${motion === "manual" ? "selected" : ""}`} onClick={() => setMotion("manual")}>
+                🎬 Veo/Flow (bạn tạo clip, app ghép) · miễn phí
+              </div>
               <div className={`chip ${motion === "fal" ? "selected" : ""}`} onClick={() => setMotion("fal")}>
-                🎥 Nhân vật chuyển động AI (fal LTX)
+                🎥 Tự động AI (fal LTX) · ~$0.05/cảnh
               </div>
               <div className={`chip ${motion === "kenburns" ? "selected" : ""}`} onClick={() => setMotion("kenburns")}>
-                🖼️ Ảnh động nhẹ (Ken Burns) · miễn phí
+                🖼️ Ảnh động nhẹ · miễn phí
               </div>
             </div>
             <div className="hint">
-              "Chuyển động AI" làm nhân vật cử động thật (cần <code>FAL_KEY</code>, ~$0.05/khung). Thiếu key sẽ tự về ảnh động nhẹ.
+              <b>Veo/Flow:</b> app tạo ảnh gốc + prompt sẵn, bạn dán vào Google Flow (Veo, miễn phí trong gói Ultra) tạo clip có thoại+SFX rồi tải lên, app tự ghép. Chất lượng cao nhất, $0 tiền video.
             </div>
           </div>
 

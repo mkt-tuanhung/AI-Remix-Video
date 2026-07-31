@@ -1,6 +1,6 @@
 import type { StepContext } from "../context";
 import { store } from "../../store";
-import type { Project, Scene } from "../../types";
+import type { ContentVariant, Project, Scene } from "../../types";
 import { splitStoryScenes } from "../../providers/story";
 import { nowISO } from "../../util";
 import { primaryVariant } from "./storyboard";
@@ -24,6 +24,11 @@ export async function storyStoryboard(ctx: StepContext): Promise<void> {
   const old = await store().list<Scene>("scenes", { variant_id: variant.id } as Partial<Scene>);
   for (const s of old) await store().remove("scenes", s.id);
   for (const s of res.scenes) await store().insert<Scene>("scenes", s);
+
+  // Lưu dàn nhân vật vào variant (hiển thị + prompt Veo).
+  if (res.characters.length) {
+    await store().update<ContentVariant>("variants", variant.id, { characters: res.characters });
+  }
 
   await store().update<Project>("projects", project.id, { status: "GENERATING_ASSETS", updated_at: nowISO() });
   await ctx.setProgress(1, `Đã tạo ${res.scenes.length} khung (${res.provider})`);

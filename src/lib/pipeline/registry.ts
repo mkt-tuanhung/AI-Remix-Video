@@ -17,6 +17,7 @@ import { storyScript } from "./steps/story-script";
 import { storyStoryboard } from "./steps/story-storyboard";
 import { imageGeneration } from "./steps/image-generation";
 import { videoAnimation } from "./steps/video-animation";
+import { assembleFilm } from "./steps/assemble-film";
 
 // Registry bước -> handler.
 // GĐ1: 4 bước phân tích. GĐ2: chiến lược/hook/kịch bản → storyboard → tài nguyên.
@@ -39,6 +40,7 @@ export const HANDLERS: Partial<Record<JobStep, StepHandler>> = {
   STORY_STORYBOARD: storyStoryboard,
   IMAGE_GENERATION: imageGeneration,
   VIDEO_ANIMATION: videoAnimation,
+  ASSEMBLE_FILM: assembleFilm,
 };
 
 /** Chuỗi job của giai đoạn phân tích (chạy tuần tự theo depends_on). */
@@ -80,6 +82,16 @@ export const STORY_PIPELINE: JobStep[] = [
   "QUALITY_CHECK",
   "FINAL_RENDER",
 ];
+
+/** Module truyện — chế độ BÁN TỰ ĐỘNG: tạo kịch bản + ảnh gốc + prompt Veo, rồi CHỜ user upload clip. */
+export const STORY_MANUAL_PIPELINE: JobStep[] = [
+  "STORY_SCRIPT",
+  "STORY_STORYBOARD",
+  "IMAGE_GENERATION",
+];
+
+/** Ghép phim từ các clip user tải lên (đã có thoại+SFX). */
+export const ASSEMBLE_PIPELINE: JobStep[] = ["ASSEMBLE_FILM"];
 
 /** Một phiên bản A/B: sản xuất trọn gói + render bản cuối luôn. */
 export const VARIANT_PIPELINE: JobStep[] = [

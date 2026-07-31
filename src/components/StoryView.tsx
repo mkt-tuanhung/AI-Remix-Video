@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { StatusBadge } from "./StatusBadge";
 import { ProductionView } from "./ProductionView";
+import { StoryClips } from "./StoryClips";
 import type { Job, Project, SourceVideo, SourceAnalysis } from "@/lib/types";
 import type { PlanningBundle } from "@/lib/services";
 
@@ -22,6 +23,7 @@ const STEP_LABEL: Record<string, string> = {
   STORY_STORYBOARD: "Chia khung hình",
   IMAGE_GENERATION: "Sinh ảnh AI (khung gốc)",
   VIDEO_ANIMATION: "Làm nhân vật chuyển động",
+  ASSEMBLE_FILM: "Ghép phim từ clip",
   VOICE_GENERATION: "Tạo voice AI",
   MUSIC_MIX: "Phối nhạc + ducking",
   CAPTION_GENERATION: "Tạo phụ đề",
@@ -107,35 +109,41 @@ export function StoryView({ projectId }: { projectId: string }) {
           </div>
         )}
 
-        {/* Storyboard — khung + ảnh AI */}
-        {scenes.length > 0 && (
-          <div className="card card-pad" style={{ marginBottom: 22 }}>
-            <div className="section-title">Khung hình · {scenes.length}</div>
-            <div className="keyframe-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
-              {scenes.map((sc) => {
-                const asset = sc.asset_id ? planning.assets[sc.asset_id] : null;
-                return (
-                  <div key={sc.id}>
-                    <div style={{ borderRadius: 10, overflow: "hidden", background: "#0c2b28", aspectRatio: "9/16", display: "grid", placeItems: "center" }}>
-                      {asset?.local_path ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={asset.local_path} alt={sc.narration} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <span className="spin" />
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, marginTop: 6, color: "var(--ink-500)" }}>
-                      <b>{sc.order + 1}.</b> {sc.narration}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Chế độ Veo/Flow: dán prompt + upload clip. Chế độ auto: gallery ảnh AI. */}
+        {project.motion_engine === "manual" ? (
+          <div style={{ marginBottom: 22 }}>
+            <StoryClips projectId={projectId} status={project.status} planning={planning} onReload={load} />
           </div>
+        ) : (
+          scenes.length > 0 && (
+            <div className="card card-pad" style={{ marginBottom: 22 }}>
+              <div className="section-title">Khung hình · {scenes.length}</div>
+              <div className="keyframe-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+                {scenes.map((sc) => {
+                  const asset = sc.asset_id ? planning.assets[sc.asset_id] : null;
+                  return (
+                    <div key={sc.id}>
+                      <div style={{ borderRadius: 10, overflow: "hidden", background: "#0c2b28", aspectRatio: "9/16", display: "grid", placeItems: "center" }}>
+                        {asset?.local_path ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={asset.local_path} alt={sc.narration} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <span className="spin" />
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, marginTop: 6, color: "var(--ink-500)" }}>
+                        <b>{sc.order + 1}.</b> {sc.narration}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )
         )}
 
-        {/* Voice / nhạc / phim hoàn chỉnh (tái dùng ProductionView) */}
-        <ProductionView projectId={projectId} status={project.status} planning={planning} onReload={load} />
+        {/* Phim hoàn chỉnh (tái dùng ProductionView để hiện video + tải MP4) */}
+        <ProductionView projectId={projectId} status={project.status} planning={planning} onReload={load} story />
       </div>
     </>
   );

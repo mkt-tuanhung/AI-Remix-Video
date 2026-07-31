@@ -18,6 +18,8 @@ import {
   FINAL_PIPELINE,
   VARIANT_PIPELINE,
   STORY_PIPELINE,
+  STORY_MANUAL_PIPELINE,
+  ASSEMBLE_PIPELINE,
 } from "./pipeline/registry";
 import { kickWorker } from "./orchestrator/worker";
 import type {
@@ -420,9 +422,63 @@ export async function createStoryProject(input: CreateStoryInput): Promise<Proje
     updated_at: nowISO(),
   };
   await store().insert<Project>("projects", project);
-  await enqueueChain(project.id, STORY_PIPELINE);
+  // Manual (Veo/Flow): chỉ tạo kịch bản + ảnh gốc + prompt, rồi chờ user upload clip.
+  const pipeline = project.motion_engine === "manual" ? STORY_MANUAL_PIPELINE : STORY_PIPELINE;
+  await enqueueChain(project.id, pipeline);
   kickWorker();
   return project;
+}
+
+/** Lưu clip user tải lên cho 1 cảnh (chế độ Veo/Flow). */
+export async function uploadSceneClip(
+  sceneId: string,
+  video: { local_path: string; mime: string; size_bytes: number; width: number | null; height: number | null }
+): Promise<Scene> {
+  const scene = await store().get<Scene>("scenes", sceneId);
+  if (!scene) throw new Error("Không tìm thấy cảnh");
+  const variant = await store().get<ContentVariant>("variants", scene.variant_id);
+  const projectId = variant?.project_id;
+  if (!projectId) throw new Error("Không xác định được dự án");
+
+  const assetId = uid("asset");
+  const asset: Asset = {
+    id: assetId,
+    project_id: projectId,
+    type: "stock_video",
+    source_url: "",
+    source_page_url: "",
+    provider: "upload",
+    license: "user",
+    width: video.width,
+    height: video.height,
+    duration_seconds: null,
+    has_logo: false,
+    quality_score: 1,
+    relevance_score: 1,
+    crop: null,
+    local_path: video.local_path,
+  };
+  await store().insert<Asset>("assets", asset);
+  return store().update<Scene>("scenes", sceneId, {
+    asset_id: assetId,
+    asset_type: "stock_video",
+    clip_url: video.local_path,
+  });
+}
+
+/** Ghép phim từ các clip đã upload (chế độ Veo/Flow). */
+export async function assembleStoryFilm(projectId: string): Promise<Job[]> {
+  const project = await getProject(projectId);
+  if (!project) throw new Error("Không tìm thấy dự án");
+  if (await hasActiveJobs(projectId)) {
+    return (await store().list<Job>("jobs", { project_id: projectId } as Partial<Job>)).filter(
+      (j) => j.status === "pending" || j.status === "running"
+    );
+  }
+  const jobs = await enqueueChain(projectId, ASSEMBLE_PIPELINE);
+  await store().update<Project>("projects", projectId, { status: "RENDERING_FINAL", updated_at: nowISO() });
+  kickWorker();
+  return jobs;
 }
 
 // ── Batch (xử lý hàng loạt) ─────────────────────────────────
