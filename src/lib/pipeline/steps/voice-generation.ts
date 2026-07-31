@@ -58,11 +58,11 @@ export async function voiceGeneration(ctx: StepContext): Promise<void> {
     voice_asset_id: null,
     music_asset_id: null,
     voice_gain_db: 0,
-    music_gain_db: -18,
+    music_gain_db: -10, // to hơn để NGHE ĐƯỢC nhạc nền
     ducking_enabled: true,
-    ducking_reduction_db: 15,
+    ducking_reduction_db: 7, // ducking nhẹ hơn → nhạc vẫn hiện diện dưới thoại
     attack_ms: 200,
-    release_ms: 800,
+    release_ms: 700,
   });
 
   await store().update<Project>("projects", project.id, {

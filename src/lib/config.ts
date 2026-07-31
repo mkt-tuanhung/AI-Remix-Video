@@ -32,6 +32,7 @@ export const config = {
   fal: {
     key: process.env.FAL_KEY || "",
     videoModel: process.env.FAL_VIDEO_MODEL || "fal-ai/ltx-video-13b-distilled/image-to-video",
+    musicModel: process.env.FAL_MUSIC_MODEL || "fal-ai/stable-audio",
   },
 
   ffmpeg: {
