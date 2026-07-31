@@ -1,12 +1,12 @@
 # AI Remix Video — image chạy trên Railway/Render (Node always-on + ffmpeg-static).
 FROM node:20-bookworm-slim AS base
 WORKDIR /app
-ENV NODE_ENV=production
 
-# --- deps ---
+# --- deps (cài ĐẦY ĐỦ cả devDependencies để build được) ---
+# LƯU Ý: KHÔNG đặt NODE_ENV=production ở đây, nếu không npm ci bỏ qua devDeps
+# (typescript, @types/*) và `next build` sẽ fail.
 FROM base AS deps
 COPY package.json package-lock.json* ./
-# npm ci chạy postinstall của ffmpeg-static (tải binary). Gọi lại install.js cho chắc.
 RUN npm ci --no-audit --no-fund \
   && node node_modules/ffmpeg-static/install.js || true
 
@@ -18,6 +18,7 @@ RUN npm run build
 
 # --- runtime ---
 FROM base AS runner
+ENV NODE_ENV=production
 ENV PORT=3000
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
