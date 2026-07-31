@@ -25,11 +25,15 @@ export async function drainQueue(): Promise<void> {
   if (draining) return;
   draining = true;
   try {
-    // Vì chỉ có 1 drain chạy tại một thời điểm, mọi job "running" lúc này là
-    // mồ côi (do lần drain trước bị dừng giữa chừng) → đưa lại pending để chạy lại.
+    // Chỉ reset job "running" đã QUÁ CŨ (mồ côi thật do drain trước chết),
+    // KHÔNG đụng job đang chạy hợp lệ (vd sinh video fal có thể lâu vài phút).
+    const STALE_MS = 15 * 60 * 1000;
+    const now = Date.now();
     const stale = await store().list<Job>("jobs");
     for (const j of stale) {
-      if (j.status === "running") {
+      if (j.status !== "running") continue;
+      const started = j.started_at ? new Date(j.started_at).getTime() : 0;
+      if (now - started > STALE_MS) {
         await store().update<Job>("jobs", j.id, { status: "pending", message: "Chạy lại sau gián đoạn" });
       }
     }

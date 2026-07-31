@@ -86,10 +86,10 @@ function subtitle(font: string, W: number, H: number, narFile: string, narSize: 
   const blockH = lines * lineH;
   const bw = Math.max(2, Math.round(narSize * 0.085));
   const sh = Math.max(1, Math.round(narSize * 0.045));
-  // Card: canh giữa dọc. Footage: neo vùng dưới (trên UI nền tảng).
+  // Card: canh giữa dọc. Footage: neo SÁT đáy (gọn, không chiếm màn hình).
   const y = centered
     ? Math.round((H - blockH) / 2)
-    : Math.max(Math.round(H * 0.46), Math.round(H * 0.8 - blockH));
+    : Math.max(Math.round(H * 0.62), Math.round(H * 0.87 - blockH));
   return (
     `drawtext=fontfile='${fontEsc}':textfile='${narFile}':fontcolor=white:fontsize=${narSize}` +
     `:x=(w-text_w)/2:y=${y}:line_spacing=${ls}` +
@@ -142,10 +142,8 @@ async function renderFootage(
 ): Promise<void> {
   const { width: W, height: H, fps } = opts;
   const cover = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`;
-  // Scrim gradient GIẢ ở đáy (2 lớp) — giữ footage tươi, chỉ tối vùng có chữ.
-  const scrim =
-    `drawbox=x=0:y=${Math.round(H * 0.5)}:w=${W}:h=${Math.round(H * 0.5)}:color=black@0.26:t=fill,` +
-    `drawbox=x=0:y=${Math.round(H * 0.72)}:w=${W}:h=${Math.round(H * 0.28)}:color=black@0.4:t=fill`;
+  // Scrim GỌN chỉ ở dải đáy (~24%) nơi có phụ đề — footage giữ tối đa diện tích.
+  const scrim = `drawbox=x=0:y=${Math.round(H * 0.76)}:w=${W}:h=${Math.round(H * 0.24)}:color=black@0.42:t=fill`;
   const ov = `${scrim},${subtitle(font, W, H, narFile, narSize, lines, false)},${brand(font, W, H)}`;
 
   if (bg.kind === "image") {
@@ -197,8 +195,8 @@ export async function renderVideo(
   let cardScenes = 0;
 
   // Cỡ chữ phụ đề + vùng an toàn (84% bề rộng) → wrap theo pixel để không tràn.
-  const narSize = Math.round(W * 0.05);
-  const safeW = W * 0.84;
+  const narSize = Math.round(W * 0.042);
+  const safeW = W * 0.86;
 
   const XF = 0.45; // thời lượng crossfade giữa các cảnh (giây)
   const multi = scenes.length > 1;

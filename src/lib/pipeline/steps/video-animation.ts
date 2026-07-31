@@ -33,6 +33,11 @@ export async function videoAnimation(ctx: StepContext): Promise<void> {
     await ctx.setProgress(done / scenes.length, `Làm chuyển động khung ${done}/${scenes.length}`);
     const img = scene.asset_id ? byId.get(scene.asset_id) : undefined;
     if (!img?.local_path) continue;
+    // Idempotent: khung đã được làm chuyển động (clip fal) thì BỎ QUA — tránh tốn tiền chạy lại.
+    if (img.provider === "fal:ltx" || img.type === "stock_video") {
+      ok++;
+      continue;
+    }
 
     const prompt =
       `${scene.visual_intent || scene.narration}. Subtle, natural character motion; the character moves and gestures gently; smooth cinematic slow camera; keep the same character design.`;
