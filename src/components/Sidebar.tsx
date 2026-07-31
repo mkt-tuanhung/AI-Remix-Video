@@ -6,7 +6,8 @@ import { CapabilityPills } from "./CapabilityPills";
 
 const NAV = [
   { href: "/", label: "Bảng điều khiển", icon: "◫" },
-  { href: "/projects/new", label: "Tạo dự án", icon: "＋" },
+  { href: "/projects/new", label: "Remix từ video", icon: "＋" },
+  { href: "/story/new", label: "Phim từ truyện", icon: "✎" },
   { href: "/batch/new", label: "Xử lý hàng loạt", icon: "▤" },
 ];
 

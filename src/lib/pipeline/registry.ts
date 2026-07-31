@@ -13,6 +13,9 @@ import { captionGeneration } from "./steps/caption-generation";
 import { previewRender } from "./steps/preview-render";
 import { qualityCheck } from "./steps/quality-check";
 import { finalRender } from "./steps/final-render";
+import { storyScript } from "./steps/story-script";
+import { storyStoryboard } from "./steps/story-storyboard";
+import { imageGeneration } from "./steps/image-generation";
 
 // Registry bước -> handler.
 // GĐ1: 4 bước phân tích. GĐ2: chiến lược/hook/kịch bản → storyboard → tài nguyên.
@@ -31,6 +34,9 @@ export const HANDLERS: Partial<Record<JobStep, StepHandler>> = {
   PREVIEW_RENDER: previewRender,
   QUALITY_CHECK: qualityCheck,
   FINAL_RENDER: finalRender,
+  STORY_SCRIPT: storyScript,
+  STORY_STORYBOARD: storyStoryboard,
+  IMAGE_GENERATION: imageGeneration,
 };
 
 /** Chuỗi job của giai đoạn phân tích (chạy tuần tự theo depends_on). */
@@ -58,6 +64,19 @@ export const PRODUCTION_PIPELINE: JobStep[] = [
 
 /** Sau khi duyệt bản nháp (Gate 4/5): render bản cuối chất lượng cao. */
 export const FINAL_PIPELINE: JobStep[] = ["FINAL_RENDER"];
+
+/** Module 2 — Truyện → Phim: chạy trọn gói tự động từ 1 nội dung. */
+export const STORY_PIPELINE: JobStep[] = [
+  "STORY_SCRIPT",
+  "STORY_STORYBOARD",
+  "IMAGE_GENERATION",
+  "VOICE_GENERATION",
+  "MUSIC_MIX",
+  "CAPTION_GENERATION",
+  "PREVIEW_RENDER",
+  "QUALITY_CHECK",
+  "FINAL_RENDER",
+];
 
 /** Một phiên bản A/B: sản xuất trọn gói + render bản cuối luôn. */
 export const VARIANT_PIPELINE: JobStep[] = [

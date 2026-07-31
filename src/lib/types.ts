@@ -72,7 +72,11 @@ export type JobStep =
   | "QUALITY_CHECK"
   | "FINAL_RENDER"
   | "VARIANT_GENERATION"
-  | "EXPORT";
+  | "EXPORT"
+  // Module 2: Truyện → Phim
+  | "STORY_SCRIPT"
+  | "STORY_STORYBOARD"
+  | "IMAGE_GENERATION";
 
 export type JobStatus =
   | "pending"
@@ -118,10 +122,25 @@ export interface SourceVideo {
 }
 
 // ── Project — đặc tả 16.1 ────────────────────────────────────
+export type ProjectKind = "remix" | "story";
+
+/** Thể loại hình ảnh cho module Truyện → Phim (đặc tả module 2). */
+export type StoryGenre =
+  | "2d"
+  | "3d"
+  | "epic"
+  | "papercut"
+  | "handdrawn"
+  | "watercolor"
+  | "realistic";
+
 export interface Project {
   id: string;
   user_id: string;
   title: string;
+  kind?: ProjectKind; // "remix" (mặc định) | "story"
+  story_text?: string; // nội dung/truyện đầu vào cho kind=story
+  genre?: StoryGenre; // thể loại hình ảnh cho kind=story
   source_video_id: string | null;
   goal: ContentGoal;
   language: string;
@@ -249,6 +268,7 @@ export interface Scene {
   narration: string;
   purpose: string;
   visual_intent: string;
+  image_prompt?: string; // prompt sinh ảnh AI (module Truyện → Phim)
   asset_type: AssetType;
   asset_id: string | null;
   search_queries: string[];

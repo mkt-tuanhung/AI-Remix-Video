@@ -17,6 +17,7 @@ import {
   PRODUCTION_PIPELINE,
   FINAL_PIPELINE,
   VARIANT_PIPELINE,
+  STORY_PIPELINE,
 } from "./pipeline/registry";
 import { kickWorker } from "./orchestrator/worker";
 import type {
@@ -376,6 +377,50 @@ export async function createABVariant(
   const jobs = await enqueueChain(projectId, VARIANT_PIPELINE, vid);
   kickWorker();
   return { variant, jobs };
+}
+
+// ── Module 2: Truyện → Phim ─────────────────────────────────
+export interface CreateStoryInput {
+  title?: string;
+  story_text: string;
+  genre?: import("./types").StoryGenre;
+  output_language?: "en" | "vi";
+  target_duration_seconds?: number;
+  aspect_ratio?: AspectRatio;
+  platform?: Platform;
+  music_mode?: "none" | "ai_bed";
+}
+
+export async function createStoryProject(input: CreateStoryInput): Promise<Project> {
+  if (!input.story_text?.trim()) throw new Error("Cần nhập nội dung/truyện");
+  const project: Project = {
+    id: uid("proj"),
+    user_id: DEMO_USER,
+    title: input.title?.trim() || "Phim từ truyện",
+    kind: "story",
+    story_text: input.story_text.trim(),
+    genre: input.genre ?? "2d",
+    source_video_id: null,
+    goal: "story",
+    language: input.output_language ?? "en",
+    target_platforms: [input.platform ?? "youtube_shorts"],
+    target_duration_seconds: input.target_duration_seconds ?? 45,
+    aspect_ratio: input.aspect_ratio ?? "9:16",
+    status: "PLANNING_CONTENT",
+    brand_preset_id: null,
+    rights_confirmed: true,
+    output_language: input.output_language ?? "en",
+    music_mode: input.music_mode ?? "ai_bed",
+    music_path: null,
+    auto: false,
+    batch_id: null,
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  };
+  await store().insert<Project>("projects", project);
+  await enqueueChain(project.id, STORY_PIPELINE);
+  kickWorker();
+  return project;
 }
 
 // ── Batch (xử lý hàng loạt) ─────────────────────────────────
