@@ -19,7 +19,8 @@ export async function storyboard(ctx: StepContext): Promise<void> {
     variant.cta,
     analysis,
     variant.id,
-    variant.target_duration_seconds
+    variant.target_duration_seconds,
+    project.output_language ?? "en"
   );
 
   // Xoá scene cũ của variant rồi ghi mới.

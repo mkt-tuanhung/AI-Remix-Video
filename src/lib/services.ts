@@ -41,6 +41,7 @@ export interface CreateProjectInput {
   target_platforms?: Platform[];
   target_duration_seconds?: number;
   aspect_ratio?: AspectRatio;
+  output_language?: "en" | "vi";
   music_mode?: "none" | "ai_bed" | "custom";
   auto?: boolean;
   batch_id?: string | null;
@@ -64,6 +65,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     status: "DRAFT",
     brand_preset_id: null,
     rights_confirmed: true,
+    output_language: input.output_language ?? "en",
     music_mode: input.music_mode ?? "ai_bed",
     music_path: null,
     auto: input.auto ?? false,

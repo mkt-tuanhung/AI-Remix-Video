@@ -36,6 +36,7 @@ export default function NewProject() {
   const [duration, setDuration] = useState(60);
   const [ratio, setRatio] = useState("9:16");
   const [music, setMusic] = useState<"ai_bed" | "none">("ai_bed");
+  const [lang, setLang] = useState<"en" | "vi">("en");
   const [rights, setRights] = useState(false);
 
   const [file, setFile] = useState<File | null>(null);
@@ -62,6 +63,7 @@ export default function NewProject() {
           target_platforms: platforms,
           target_duration_seconds: duration,
           aspect_ratio: ratio,
+          output_language: lang,
           music_mode: music,
           rights_confirmed: rights,
         }),
@@ -125,13 +127,23 @@ export default function NewProject() {
               />
             </div>
 
-            <div className="field">
-              <label className="label">Mục tiêu nội dung</label>
-              <select className="select" value={goal} onChange={(e) => setGoal(e.target.value)}>
-                {GOALS.map((g) => (
-                  <option key={g.v} value={g.v}>{g.l}</option>
-                ))}
-              </select>
+            <div className="grid grid-2">
+              <div className="field">
+                <label className="label">Mục tiêu nội dung</label>
+                <select className="select" value={goal} onChange={(e) => setGoal(e.target.value)}>
+                  {GOALS.map((g) => (
+                    <option key={g.v} value={g.v}>{g.l}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label className="label">Ngôn ngữ đầu ra (kịch bản + giọng đọc)</label>
+                <select className="select" value={lang} onChange={(e) => setLang(e.target.value as "en" | "vi")}>
+                  <option value="en">🇬🇧 English (cho khán giả nước ngoài)</option>
+                  <option value="vi">🇻🇳 Tiếng Việt</option>
+                </select>
+                <div className="hint">Video gốc tiếng gì cũng được — hệ thống dịch & viết lại sang ngôn ngữ này.</div>
+              </div>
             </div>
 
             <div className="field">

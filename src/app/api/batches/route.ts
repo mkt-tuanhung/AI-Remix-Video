@@ -37,6 +37,7 @@ export async function POST(req: Request) {
     const duration = Number(form.get("duration") || 45);
     const ratio = (form.get("aspect_ratio") as AspectRatio) || "9:16";
     const music = (form.get("music_mode") as "none" | "ai_bed") || "ai_bed";
+    const lang = (form.get("output_language") as "en" | "vi") || "en";
 
     const batch = await createBatchRecord();
     const projectIds: string[] = [];
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
         target_platforms: [platform],
         target_duration_seconds: duration,
         aspect_ratio: ratio,
+        output_language: lang,
         music_mode: music,
         auto: true,
         batch_id: batch.id,

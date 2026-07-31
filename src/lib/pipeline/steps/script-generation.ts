@@ -17,20 +17,21 @@ export async function scriptGeneration(ctx: StepContext): Promise<void> {
   if (!analysis) throw new Error("Chưa có phân tích nguồn");
 
   const platform = project.target_platforms[0] ?? "tiktok";
+  const lang = project.output_language ?? "en";
 
   await ctx.setProgress(0.2, "Đề xuất chiến lược nội dung");
-  const strat = await generateStrategies(analysis, project.goal, platform, project.target_duration_seconds);
+  const strat = await generateStrategies(analysis, project.goal, platform, project.target_duration_seconds, lang);
   await store().upsert<StrategyDoc>("content_strategies", { id: project.id, items: strat.items });
 
   await ctx.setProgress(0.5, "Tạo các phương án hook");
-  const hooksRes = await generateHooks(analysis);
+  const hooksRes = await generateHooks(analysis, lang);
   const hooks = [...hooksRes.items].sort((a, b) => hookOverall(b) - hookOverall(a));
   await store().upsert<HookDoc>("hooks", { id: project.id, items: hooks });
 
   await ctx.setProgress(0.75, "Viết lại kịch bản theo thời lượng mục tiêu");
   const topHook = hooks[0];
   const topStrategy = strat.items[0];
-  const rew = await rewriteScript(analysis, topHook, project.goal, project.target_duration_seconds);
+  const rew = await rewriteScript(analysis, topHook, project.goal, project.target_duration_seconds, lang);
 
   // Tạo/cập nhật variant chính (variant đầu tiên của dự án).
   const existing = await store().list<ContentVariant>("variants", { project_id: project.id } as Partial<ContentVariant>);

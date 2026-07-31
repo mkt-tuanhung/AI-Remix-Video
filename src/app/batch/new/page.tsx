@@ -26,6 +26,7 @@ export default function BatchNew() {
   const [goal, setGoal] = useState("remix");
   const [platform, setPlatform] = useState("tiktok");
   const [duration, setDuration] = useState(45);
+  const [lang, setLang] = useState<"en" | "vi">("en");
   const [music, setMusic] = useState<"ai_bed" | "none">("ai_bed");
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,6 +44,7 @@ export default function BatchNew() {
       fd.append("platform", platform);
       fd.append("duration", String(duration));
       fd.append("aspect_ratio", "9:16");
+      fd.append("output_language", lang);
       fd.append("music_mode", music);
       fd.append("rights_confirmed", "true");
       const res = await fetch("/api/batches", { method: "POST", body: fd });
@@ -103,11 +105,20 @@ export default function BatchNew() {
             </div>
           </div>
 
-          <div className="field">
-            <label className="label">Nhạc nền</label>
-            <div className="chip-row">
-              <div className={`chip ${music === "ai_bed" ? "selected" : ""}`} onClick={() => setMusic("ai_bed")}>🎵 AI tự phối</div>
-              <div className={`chip ${music === "none" ? "selected" : ""}`} onClick={() => setMusic("none")}>🔇 Không nhạc</div>
+          <div className="grid grid-2">
+            <div className="field">
+              <label className="label">Nhạc nền</label>
+              <div className="chip-row">
+                <div className={`chip ${music === "ai_bed" ? "selected" : ""}`} onClick={() => setMusic("ai_bed")}>🎵 AI tự phối</div>
+                <div className={`chip ${music === "none" ? "selected" : ""}`} onClick={() => setMusic("none")}>🔇 Không nhạc</div>
+              </div>
+            </div>
+            <div className="field">
+              <label className="label">Ngôn ngữ đầu ra</label>
+              <div className="chip-row">
+                <div className={`chip ${lang === "en" ? "selected" : ""}`} onClick={() => setLang("en")}>🇬🇧 English</div>
+                <div className={`chip ${lang === "vi" ? "selected" : ""}`} onClick={() => setLang("vi")}>🇻🇳 Tiếng Việt</div>
+              </div>
             </div>
           </div>
 

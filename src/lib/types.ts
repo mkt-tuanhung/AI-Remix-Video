@@ -131,6 +131,7 @@ export interface Project {
   status: ProjectStatus;
   brand_preset_id?: string | null;
   rights_confirmed: boolean;
+  output_language?: "en" | "vi"; // ngôn ngữ kịch bản + voice đầu ra (mặc định en)
   music_mode?: "none" | "ai_bed" | "custom"; // nhạc nền
   music_path?: string | null; // public url nếu custom
   auto?: boolean; // chế độ tự động qua mọi gate (batch)

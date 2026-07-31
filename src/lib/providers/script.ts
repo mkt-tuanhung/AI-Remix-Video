@@ -10,6 +10,15 @@ import type {
 import { chatJSON, hasOpenAI } from "./openai";
 import { estimateSpeechSeconds, seededPick, seededUnit, uid } from "../util";
 
+export type Lang = "en" | "vi";
+
+// Chỉ dẫn ngôn ngữ đầu ra cho LLM. Video gốc tiếng gì cũng viết lại sang ngôn ngữ này.
+function langDirective(lang: Lang): string {
+  return lang === "en"
+    ? "IMPORTANT: Write ALL output text (angles, hooks, script, narration, CTA, on-screen text) in natural, fluent ENGLISH for an international audience. If the source is in another language, translate the facts accurately into English — do not invent facts."
+    : "QUAN TRỌNG: Viết toàn bộ nội dung bằng TIẾNG VIỆT tự nhiên.";
+}
+
 // ─────────────────────────────────────────────────────────────
 // Sinh chiến lược, hook, viết lại kịch bản, chia storyboard.
 // Có mock fallback tất định để chạy khi chưa cắm OpenAI.
@@ -32,13 +41,15 @@ export async function generateStrategies(
   analysis: SourceAnalysis,
   goal: string,
   platform: Platform,
-  targetSeconds: number
+  targetSeconds: number,
+  lang: Lang = "en"
 ): Promise<{ provider: "openai" | "mock"; items: ContentStrategy[] }> {
   if (hasOpenAI() && analysis.transcript.trim()) {
     try {
       const out = await chatJSON<{ strategies: any[] }>(
-        `Bạn là chiến lược gia nội dung video ngắn. Đề xuất 2-3 chiến lược tái sản xuất khác nhau.
-Trả JSON: {"strategies":[{"angle","audience","emotion","pacing":"slow|medium|fast","recommended_duration_seconds":number,"rationale"}]}`,
+        `You are a short-form video content strategist. Propose 2-3 distinct remix strategies.
+${langDirective(lang)}
+Return JSON: {"strategies":[{"angle","audience","emotion","pacing":"slow|medium|fast","recommended_duration_seconds":number,"rationale"}]}`,
         `Chủ đề: ${analysis.main_topic}\nMục tiêu: ${goal}\nNền tảng: ${platform}\nThời lượng mục tiêu: ${targetSeconds}s\nTranscript: ${analysis.transcript}`,
         { temperature: 0.7 }
       );
@@ -86,14 +97,16 @@ const HOOK_TEMPLATES: { type: Hook["type"]; make: (topic: string) => string }[] 
 ];
 
 export async function generateHooks(
-  analysis: SourceAnalysis
+  analysis: SourceAnalysis,
+  lang: Lang = "en"
 ): Promise<{ provider: "openai" | "mock"; items: Hook[] }> {
   if (hasOpenAI() && analysis.transcript.trim()) {
     try {
       const out = await chatJSON<{ hooks: any[] }>(
-        `Bạn là chuyên gia viết hook mở đầu video ngắn. Tạo đúng 5 hook thuộc các kiểu: question, surprise, pain, result, climax.
-Chấm điểm 0..1 cho: clarity, curiosity, relevance, retention_3s, honesty (không giật tít sai sự thật).
-Trả JSON: {"hooks":[{"type","text","clarity","curiosity","relevance","retention_3s","honesty"}]}`,
+        `You are an expert at writing short-form video opening hooks. Create exactly 5 hooks of types: question, surprise, pain, result, climax.
+${langDirective(lang)}
+Score 0..1 for: clarity, curiosity, relevance, retention_3s, honesty (no clickbait / false claims).
+Return JSON: {"hooks":[{"type","text","clarity","curiosity","relevance","retention_3s","honesty"}]}`,
         `Chủ đề: ${analysis.main_topic}\nHook gốc: ${analysis.source_hook}\nTranscript: ${analysis.transcript}`,
         { temperature: 0.8 }
       );
@@ -145,18 +158,20 @@ export async function rewriteScript(
   analysis: SourceAnalysis,
   hook: Hook,
   goal: string,
-  targetSeconds: number
+  targetSeconds: number,
+  lang: Lang = "en"
 ): Promise<{ provider: "openai" | "mock"; script: string; cta: string; estimated_seconds: number }> {
-  const targetWords = Math.round(targetSeconds * 2.6);
+  const targetWords = Math.round(targetSeconds * (lang === "en" ? 2.8 : 2.6));
 
   if (hasOpenAI() && analysis.transcript.trim()) {
     try {
       const facts = analysis.facts.map((f) => `- (${f.kind}) ${f.text}`).join("\n");
       const out = await chatJSON<{ script: string; cta: string }>(
-        `Bạn là biên kịch video ngắn. Viết lại kịch bản GIỮ ĐÚNG dữ kiện, cấu trúc rõ (hook → thân → kết),
-câu ngắn dễ đọc thành voice, KHÔNG bịa thêm thông tin. Độ dài ~${targetWords} từ (~${targetSeconds}s).
-Bắt đầu bằng hook đã cho. Trả JSON: {"script": "...", "cta": "..."}`,
-        `Chủ đề: ${analysis.main_topic}\nMục tiêu: ${goal}\nHook: ${hook.text}\nDữ kiện (không được sai):\n${facts}\nTranscript gốc: ${analysis.transcript}`,
+        `You are a short-form video scriptwriter. Rewrite the script KEEPING the facts accurate, with clear structure (hook -> body -> close),
+short voiceover-friendly sentences, NO invented facts. Length ~${targetWords} words (~${targetSeconds}s).
+Start with the given hook. ${langDirective(lang)}
+Return JSON: {"script": "...", "cta": "..."}`,
+        `Topic: ${analysis.main_topic}\nGoal: ${goal}\nHook: ${hook.text}\nFacts (must stay accurate):\n${facts}\nOriginal transcript (source language): ${analysis.transcript}`,
         { temperature: 0.7 }
       );
       const script = (out.script || "").trim();
@@ -182,12 +197,21 @@ Bắt đầu bằng hook đã cho. Trả JSON: {"script": "...", "cta": "..."}`,
     body.push(bodyPool[i % bodyPool.length]);
     i++;
   }
-  const cta = deriveCta(goal, analysis);
+  const cta = deriveCta(goal, analysis, lang);
   const script = [hook.text, ...dedupeKeepOrder(body)].join(" ");
   return { provider: "mock", script, cta, estimated_seconds: estimateSpeechSeconds(`${script} ${cta}`) };
 }
 
-function deriveCta(goal: string, analysis: SourceAnalysis): string {
+function deriveCta(goal: string, analysis: SourceAnalysis, lang: Lang): string {
+  if (lang === "en") {
+    const en: Record<string, string> = {
+      sales: "DM us today to get started.",
+      education: "Save this video so you can come back to it.",
+      review: "Comment below which option you'd pick.",
+      news: "Follow so you never miss the next update.",
+    };
+    return en[goal] || "Follow for more content like this.";
+  }
   const map: Record<string, string> = {
     sales: "Nhắn tin cho mình để được tư vấn ngay hôm nay nhé.",
     education: "Lưu lại video để xem lại khi cần bạn nhé.",
@@ -203,18 +227,21 @@ export async function splitStoryboard(
   cta: string,
   analysis: SourceAnalysis,
   variantId: string,
-  targetSeconds: number
+  targetSeconds: number,
+  lang: Lang = "en"
 ): Promise<{ provider: "openai" | "mock"; scenes: Scene[] }> {
   const reusableShots = analysis.shots.filter((s) => s.reuse_eligible);
 
   if (hasOpenAI() && script.trim()) {
     try {
       const out = await chatJSON<{ scenes: any[] }>(
-        `Bạn là đạo diễn dựng phim ngắn. Chia kịch bản thành các cảnh theo Ý NGHĨA.
-Mỗi cảnh: narration (1 câu), purpose, visual_intent, asset_type (source_clip|stock_video|image|ai_visual|motion_graphic),
-search_queries (2-3 từ khoá tiếng Anh để tìm stock), on_screen_text (ngắn), effect, transition, priority(low|medium|high).
-Trả JSON: {"scenes":[...]}`,
-        `Kịch bản: ${script}\nCTA: ${cta}\nCó ${reusableShots.length} cảnh nguồn tái dùng được.`,
+        `You are a short-film editor. Split the script into scenes by MEANING.
+Each scene: narration (1 sentence, in the SAME language as the script), purpose, visual_intent,
+asset_type (source_clip|stock_video|image|ai_visual|motion_graphic),
+search_queries (2-3 ENGLISH keywords to find stock footage), on_screen_text (short), effect, transition, priority(low|medium|high).
+${langDirective(lang)}
+Return JSON: {"scenes":[...]}`,
+        `Script: ${script}\nCTA: ${cta}\nThere are ${reusableShots.length} reusable source shots.`,
         { temperature: 0.5 }
       );
       const scenes = buildScenes((out.scenes || []).map(normalizeScene), variantId, targetSeconds, reusableShots);
