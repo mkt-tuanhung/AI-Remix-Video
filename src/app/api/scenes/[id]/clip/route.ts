@@ -5,6 +5,7 @@ import { store } from "@/lib/store";
 import type { ContentVariant, Scene } from "@/lib/types";
 import { uploadSceneClip } from "@/lib/services";
 import { projectDir } from "@/lib/paths";
+import { extractFrame } from "@/lib/media/ffmpeg";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -39,7 +40,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       width: null,
       height: null,
     });
-    return NextResponse.json({ scene: updated }, { status: 201 });
+
+    // Trích KHUNG CUỐI clip → dùng làm ảnh đầu cho cảnh sau (nối bối cảnh liền mạch).
+    let continuity: string | undefined;
+    const frameAbs = path.join(dir, `${scene.id}_last.jpg`);
+    const clipAbs = path.join(dir, filename);
+    // seek gần cuối clip
+    const ok = await extractFrame(clipAbs, Math.max(0.1, 4.5), frameAbs);
+    if (ok) {
+      continuity = `/uploads/${variant.project_id}/clips/${scene.id}_last.jpg`;
+      await store().update<Scene>("scenes", scene.id, { continuity_url: continuity });
+    }
+    return NextResponse.json({ scene: { ...updated, continuity_url: continuity } }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 400 });
   }

@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { runFfmpeg } from "./ffmpeg";
+import { runFfmpeg, probeDuration } from "./ffmpeg";
 
 // Ghép các clip user tải lên (đã có thoại + SFX từ Veo) thành phim hoàn chỉnh.
 // Chuẩn hoá về 1080x1920/30fps/aac, (tuỳ chọn) burn phụ đề + nhạc nền nhẹ (ducking).
@@ -70,6 +70,8 @@ export async function assembleFilm(
     await runFfmpeg([
       "-y", "-i", c.absPath,
       "-vf", vf,
+      // loudnorm: chuẩn hoá độ to thoại giữa các clip cho đồng đều.
+      "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,aformat=sample_rates=44100:channel_layouts=stereo",
       "-r", String(FPS),
       "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "medium", "-crf", "20",
       "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
@@ -78,11 +80,47 @@ export async function assembleFilm(
     normed.push(out);
   }
 
-  // 2) Nối (concat demuxer — các clip đã cùng thông số).
-  const listFile = path.join(tmpDir, "list.txt");
-  await fs.writeFile(listFile, normed.map((c) => `file '${c}'`).join("\n"), "utf8");
+  // 2) Nối cảnh: crossfade mượt (hình + tiếng). Lỗi → fallback nối cứng.
   const joined = path.join(tmpDir, "joined.mp4");
-  await runFfmpeg(["-y", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", joined]);
+  const XF = 0.3;
+  let crossfaded = false;
+  if (normed.length > 1) {
+    try {
+      const durs: number[] = [];
+      for (const n of normed) durs.push((await probeDuration(n)) ?? 5);
+      const inputs = normed.flatMap((n) => ["-i", n]);
+      let vf = "";
+      let af = "";
+      let vprev = "[0:v]";
+      let aprev = "[0:a]";
+      let acc = durs[0];
+      for (let i = 1; i < normed.length; i++) {
+        const off = Math.max(0, Math.round((acc - XF) * 1000) / 1000);
+        const vo = i === normed.length - 1 ? "[vout]" : `[vx${i}]`;
+        const ao = i === normed.length - 1 ? "[aout]" : `[ax${i}]`;
+        vf += `${vprev}[${i}:v]xfade=transition=fade:duration=${XF}:offset=${off}${vo};`;
+        af += `${aprev}[${i}:a]acrossfade=d=${XF}${ao};`;
+        vprev = vo; aprev = ao;
+        acc = acc + durs[i] - XF;
+      }
+      await runFfmpeg([
+        "-y", ...inputs,
+        "-filter_complex", (vf + af).replace(/;$/, ""),
+        "-map", "[vout]", "-map", "[aout]",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "medium", "-crf", "20",
+        "-c:a", "aac", "-b:a", "160k",
+        joined,
+      ]);
+      crossfaded = true;
+    } catch {
+      crossfaded = false;
+    }
+  }
+  if (!crossfaded) {
+    const listFile = path.join(tmpDir, "list.txt");
+    await fs.writeFile(listFile, normed.map((c) => `file '${c}'`).join("\n"), "utf8");
+    await runFfmpeg(["-y", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", joined]);
+  }
 
   // 3) Nhạc nền nhẹ (tuỳ chọn) — ducking theo chính tiếng thoại của clip.
   if (opts.musicAbs) {

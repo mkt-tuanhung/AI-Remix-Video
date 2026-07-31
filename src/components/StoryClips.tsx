@@ -36,6 +36,13 @@ export function StoryClips({
     }
   }
 
+  async function copyAll() {
+    const all = scenes
+      .map((s, i) => `Cảnh ${i + 1}:\n${s.veo_prompt || ""}`)
+      .join("\n\n────────\n\n");
+    await copyPrompt("__all__", all);
+  }
+
   async function uploadClip(sceneId: string, file: File) {
     setUploading(sceneId);
     try {
@@ -80,17 +87,25 @@ export function StoryClips({
         </div>
       )}
 
-      <div className="banner">
-        🎬 <b>Cách làm:</b> mỗi cảnh có <b>ảnh gốc</b> + <b>prompt Veo</b>. Vào{" "}
-        <a href="https://labs.google/flow" target="_blank" rel="noreferrer" style={{ color: "var(--teal-700)", fontWeight: 600 }}>Google Flow</a>{" "}
-        → upload ảnh gốc + dán prompt → tạo clip (≤8s) → tải clip về → bấm "Tải clip" ở cảnh tương ứng. Mẹo nối liền: dùng <b>khung cuối</b> clip trước làm ảnh đầu clip sau.
+      <div className="banner" style={{ flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+        <div>
+          🎬 <b>Cách làm:</b> mỗi cảnh có <b>ảnh gốc</b> + <b>prompt Veo</b>. Vào{" "}
+          <a href="https://labs.google/flow" target="_blank" rel="noreferrer" style={{ color: "var(--teal-700)", fontWeight: 600 }}>Google Flow</a>{" "}
+          → upload ảnh + dán prompt → tạo clip (≤8s) → tải về → "Tải clip" ở cảnh đó.
+          <b> Nối liền:</b> app tự trích <b>khung cuối</b> mỗi clip — hãy dùng nó làm ảnh đầu của clip kế tiếp để nhân vật/bối cảnh liền mạch.
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={copyAll}>
+          {copied === "__all__" ? "✓ Đã copy tất cả" : "📋 Copy TẤT CẢ prompt"}
+        </button>
       </div>
 
       {/* Từng cảnh */}
-      {scenes.map((sc) => (
+      {scenes.map((sc, idx) => {
+        const prevContinuity = idx > 0 ? scenes[idx - 1].continuity_url : undefined;
+        return (
         <div key={sc.id} className="card card-pad">
           <div className="row" style={{ gap: 16, alignItems: "flex-start" }}>
-            {/* ảnh gốc */}
+            {/* ảnh gốc + (nếu có) ảnh nối từ cảnh trước */}
             <div style={{ width: 120, flexShrink: 0 }}>
               <div style={{ borderRadius: 8, overflow: "hidden", background: "#0c2b28", aspectRatio: "9/16" }}>
                 {sc.image_url ? (
@@ -99,7 +114,15 @@ export function StoryClips({
                 ) : null}
               </div>
               {sc.image_url && (
-                <a className="btn btn-ghost btn-sm" href={sc.image_url} download style={{ marginTop: 6, width: "100%", justifyContent: "center", fontSize: 12 }}>⬇ Tải ảnh gốc</a>
+                <a className="btn btn-ghost btn-sm" href={sc.image_url} download style={{ marginTop: 6, width: "100%", justifyContent: "center", fontSize: 12 }}>⬇ Ảnh gốc</a>
+              )}
+              {prevContinuity && (
+                <div style={{ marginTop: 8 }}>
+                  <div className="hint" style={{ margin: "0 0 4px", fontSize: 11, color: "var(--teal-700)" }}>🔗 Ảnh nối (nên dùng làm ảnh đầu):</div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={prevContinuity} alt="" style={{ width: "100%", borderRadius: 6, border: "1px solid var(--teal-300)" }} />
+                  <a className="btn btn-ghost btn-sm" href={prevContinuity} download style={{ marginTop: 4, width: "100%", justifyContent: "center", fontSize: 11 }}>⬇ Ảnh nối</a>
+                </div>
               )}
             </div>
 
@@ -142,7 +165,8 @@ export function StoryClips({
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {/* Ghép phim */}
       {!done && (

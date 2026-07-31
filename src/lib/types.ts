@@ -289,6 +289,7 @@ export interface Scene {
   dialogue?: DialogueLine[]; // lời thoại của cảnh (nhiều nhân vật)
   image_url?: string; // ảnh gốc (keyframe) — public url
   clip_url?: string; // clip user tải lên (Veo/Flow) — public url
+  continuity_url?: string; // khung CUỐI clip này — dùng làm ảnh đầu cho cảnh sau (nối liền)
   asset_type: AssetType;
   asset_id: string | null;
   search_queries: string[];
