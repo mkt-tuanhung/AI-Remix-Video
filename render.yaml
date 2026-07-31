@@ -1,0 +1,30 @@
+# Render Blueprint — deploy 1 dịch vụ web (Docker) + ổ đĩa bền.
+# Vào Render → New → Blueprint → trỏ tới repo này. Sau đó điền 2 secret key.
+services:
+  - type: web
+    name: ai-remix-video
+    runtime: docker
+    plan: starter # cần RAM để render ffmpeg; free tier dễ hết RAM
+    region: singapore # gần VN; đổi nếu muốn
+    healthCheckPath: /
+    autoDeploy: true
+    disk:
+      name: storage
+      mountPath: /app/persistent # = STORAGE_DIR
+      sizeGB: 5
+    envVars:
+      - key: STORAGE_DIR
+        value: /app/persistent
+      - key: STORE_DRIVER
+        value: fs
+      - key: TTS_PROVIDER
+        value: openai
+      - key: STOCK_PROVIDER
+        value: pexels
+      - key: NODE_ENV
+        value: production
+      # Điền 2 key này trong Render Dashboard (không commit vào repo):
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false

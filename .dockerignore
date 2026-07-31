@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.data
+public/uploads
+.env
+.env.local
+.env*.local
+*.md
+.claude
+npm-debug.log*
+.DS_Store
