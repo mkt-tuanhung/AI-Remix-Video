@@ -24,39 +24,43 @@ export async function generateSceneImage(
   await fs.mkdir(path.dirname(outPath), { recursive: true });
 
   if (config.openai.key) {
-    try {
-      const res = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.openai.key}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-image-1",
-          prompt: prompt.slice(0, 3900),
-          n: 1,
-          size, // gpt-image-1: 1024x1024 | 1024x1536 | 1536x1024
-          quality: "medium",
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const item = data?.data?.[0];
-        if (item?.b64_json) {
-          await fs.writeFile(outPath, Buffer.from(item.b64_json, "base64"));
-          return { provider: "openai", path: outPath };
-        }
-        if (item?.url) {
-          const img = await fetch(item.url);
-          if (img.ok) {
-            await fs.writeFile(outPath, Buffer.from(await img.arrayBuffer()));
+    // Thử tối đa 2 lần để giảm khung bị gradient khi API lỗi tạm thời.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch("https://api.openai.com/v1/images/generations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${config.openai.key}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-image-1",
+            prompt: prompt.slice(0, 3900),
+            n: 1,
+            size, // gpt-image-1: 1024x1024 | 1024x1536 | 1536x1024
+            quality: "medium",
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const item = data?.data?.[0];
+          if (item?.b64_json) {
+            await fs.writeFile(outPath, Buffer.from(item.b64_json, "base64"));
             return { provider: "openai", path: outPath };
           }
+          if (item?.url) {
+            const img = await fetch(item.url);
+            if (img.ok) {
+              await fs.writeFile(outPath, Buffer.from(await img.arrayBuffer()));
+              return { provider: "openai", path: outPath };
+            }
+          }
         }
+        // lỗi (content policy, rate limit…) → thử lại 1 lần rồi placeholder
+      } catch {
+        /* thử lại */
       }
-      // lỗi (content policy, rate limit…) → rơi xuống placeholder
-    } catch {
-      /* fallback */
+      await new Promise((r) => setTimeout(r, 1500));
     }
   }
 
