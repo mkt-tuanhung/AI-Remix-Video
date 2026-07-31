@@ -11,11 +11,17 @@ import { runFfmpeg } from "./ffmpeg";
 export type SceneBg = { kind: "video" | "image"; path: string };
 
 const FONT_CANDIDATES = [
+  // macOS (dev)
   "/System/Library/Fonts/Supplemental/Arial.ttf",
   "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
   "/Library/Fonts/Arial.ttf",
   "/System/Library/Fonts/Supplemental/Verdana.ttf",
+  // Linux / Docker (prod) — cài qua apt fonts-dejavu-core
   "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+  "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+  "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+  "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+  "/usr/share/fonts/dejavu/DejaVuSans.ttf",
 ];
 
 let _font: string | null | undefined;

@@ -20,6 +20,12 @@ RUN npm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
+
+# Font cho drawtext (render chữ). Image slim không có font → phải cài.
+# DejaVu hỗ trợ tiếng Việt đầy đủ.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends fonts-dejavu-core fontconfig \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
